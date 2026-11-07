@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Shell syntax (bash -n)
+        run: for f in scripts/*.sh scripts/lib/*.sh; do bash -n "$f" || exit 1; done
+
+      - name: Python syntax (py_compile)
+        run: python -m py_compile scripts/*.py $(ls scripts/lib/*.py 2>/dev/null)
+
+      - name: shellcheck (errors only for now)
+        run: shellcheck --severity=error scripts/*.sh scripts/lib/*.sh
+
+      - name: Unit tests (pure helpers, no video)
+        run: |
+          pip install pytest
+          python -m pytest -q tests

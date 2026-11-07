@@ -1,0 +1,14 @@
+{
+ "name": "Default",
+ "about": "A neutral placeholder brand. Copy this folder to brands/<name>/, change the values, and put the name in brands/active (or pass --brand <name> to stage 1).",
+ "colors": {
+  "ground": "#111827",
+  "ground_deep": "#0B1220",
+  "accent": "#38BDF8",
+  "secondary": "#2563EB"
+ },
+ "gradient": "linear-gradient(115deg, #1E3A8A 0%, #2563EB 50%, #38BDF8 100%)",
+ "fonts": {"sans": "Poppins", "mono": "IBM Plex Mono"},
+ "logo": null,
+ "transcribe_prompt": ""
+}

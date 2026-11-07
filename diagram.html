@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>System Diagram — OverVue Video Editing System</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; max-width: 1200px; margin: 40px auto; padding: 20px; color: #222; }
+    h1 { margin-bottom: 8px; }
+    .subtitle { color: #666; margin-bottom: 16px; }
+    .hint { color: #888; font-size: 13px; margin-bottom: 16px; }
+    .controls { margin-bottom: 12px; display: flex; gap: 8px; }
+    .controls button {
+      padding: 6px 12px; font-size: 13px; cursor: pointer;
+      background: #fff; border: 1px solid #ccc; border-radius: 4px;
+    }
+    .controls button:hover { background: #f0f0f0; }
+    #diagram-container {
+      background: #fafafa; border-radius: 8px; border: 1px solid #eee;
+      height: 75vh; overflow: hidden; position: relative;
+    }
+    #diagram-container svg { width: 100%; height: 100%; display: block; }
+    .mermaid-source { display: none; }
+    .legend { margin-top: 20px; font-size: 13px; color: #555; display: flex; gap: 24px; flex-wrap: wrap; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+  </style>
+</head>
+<body>
+  <h1>OverVue Video Editing System</h1>
+  <p class="subtitle">System flow diagram — raw Screen Studio recording to publishable YouTube package</p>
+  <p class="hint">Scroll to zoom · Drag to pan · Use buttons below to reset</p>
+  <div class="controls">
+    <button onclick="panZoom.zoomIn()">Zoom in</button>
+    <button onclick="panZoom.zoomOut()">Zoom out</button>
+    <button onclick="panZoom.resetZoom(); panZoom.center();">Reset</button>
+    <button onclick="panZoom.fit(); panZoom.center();">Fit to screen</button>
+  </div>
+  <div id="diagram-container"></div>
+
+  <div class="legend">
+    <span><i class="swatch" style="background:#CF128C"></i> Human checkpoint — the system stops here</span>
+    <span><i class="swatch" style="background:#80DCEB"></i> Reference file the system reads</span>
+    <span><i class="swatch" style="background:#fff"></i> Automatic step</span>
+  </div>
+
+  <div class="mermaid-source" id="mermaid-source">
+flowchart LR
+  Drop["Colin drops MP4<br/>plus outline into raw"] --> Pre{"Preflight:<br/>audio, file,<br/>outline OK?"}
+  Pre -- No --> Stop["Stop with a<br/>plain-English reason"]
+  Pre -- Yes --> Copy["Copy to work folder<br/>raw is read-only"]
+
+  Copy --> Trans["WhisperX transcribe<br/>word-level timestamps"]
+  Glos[("glossary.md")] --> Fix
+  Trans --> Fix["Correct OverVue<br/>vocabulary"]
+  Fix --> Clean["FFmpeg: strip dead air,<br/>filler, flubbed takes<br/>sentence boundaries only<br/>never cut mid-motion"]
+  Clean --> Propose["Propose content cut list<br/>to reach 12-18 min"]
+  Propose --> CP1{{"CHECKPOINT 1<br/>Colin approves<br/>the cut list"}}
+
+  CP1 --> Chap["Split into chapters"]
+  Chap --> Sample["Render 10-second<br/>look sample"]
+  Sample --> CP2{{"CHECKPOINT 2<br/>Colin approves<br/>the look"}}
+
+  Brand[("brand-kit.md")] --> Gfx
+  CP2 --> Gfx["Hyperframes graphics<br/>chapter by chapter<br/>each rendered separately"]
+  Gfx --> Asm["Assemble chapters"]
+
+  ICP[("icp.md<br/>cleared claims only")] --> Pack
+  Asm --> Pack["Build package:<br/>thumbnail, description,<br/>chapters, SRT,<br/>LinkedIn clip"]
+  Pack --> CP3{{"CHECKPOINT 3<br/>Colin approves<br/>the package"}}
+  CP3 --> Out[("output folder")]
+  Out --> Up["Colin uploads to YouTube<br/>the system never publishes"]
+
+  Log[("logs/run.log")]
+  Clean -.-> Log
+  Gfx -.-> Log
+  Pack -.-> Log
+
+  classDef human fill:#CF128C,stroke:#8d0a5e,color:#fff,font-weight:bold;
+  classDef data fill:#80DCEB,stroke:#32A1CA,color:#0d2733;
+  classDef halt fill:#f3f3f3,stroke:#bbb,color:#666;
+  classDef terminal fill:#150C45,stroke:#150C45,color:#fff;
+
+  class CP1,CP2,CP3 human;
+  class Glos,Brand,ICP,Log,Out data;
+  class Stop halt;
+  class Drop,Up terminal;
+  </div>
+
+  <script>
+    let panZoom;
+    mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
+
+    (async () => {
+      const src = document.getElementById('mermaid-source').textContent;
+      const { svg } = await mermaid.render('rendered-diagram', src);
+      const container = document.getElementById('diagram-container');
+      container.innerHTML = svg;
+      const svgEl = container.querySelector('svg');
+      svgEl.removeAttribute('height');
+      svgEl.removeAttribute('width');
+      svgEl.style.width = '100%';
+      svgEl.style.height = '100%';
+      panZoom = svgPanZoom(svgEl, {
+        zoomEnabled: true,
+        controlIconsEnabled: false,
+        fit: true,
+        center: true,
+        minZoom: 0.2,
+        maxZoom: 10,
+        zoomScaleSensitivity: 0.4
+      });
+      window.addEventListener('resize', () => { panZoom.resize(); panZoom.fit(); panZoom.center(); });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!doctype html>
+<!--
+  The YouTube thumbnail, 1280×720. A frame from the video on the right, the
+  headline on the brand ground on the left, the brand gradient as a diagonal
+  band between them. Rendered as a still by `hyperframes snapshot`.
+  scripts/package.py fills in DATA; colours and fonts come from brand.json.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=720" />
+    <link rel="stylesheet" href="lib/fonts/fonts.css" />
+    <script src="lib/gsap.min.js"></script>
+    <style>
+      :root {
+        --ground: #111827; --accent: #38bdf8;
+        --gradient: linear-gradient(115deg, #1e3a8a 0%, #2563eb 50%, #38bdf8 100%);
+        --sans: "Poppins", Arial, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1280px; height: 720px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 1280px; height: 720px; overflow: hidden; background: var(--ground); }
+      #frame {
+        position: absolute; right: 0; top: 0; width: 760px; height: 720px;
+        background-size: cover; background-position: center;
+        clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%);
+      }
+      #band {
+        position: absolute; top: 0; left: 478px; width: 60px; height: 720px;
+        background: var(--gradient); transform: skewX(-12deg); transform-origin: top left;
+      }
+      #text { position: absolute; left: 56px; top: 0; bottom: 0; width: 470px;
+              display: flex; flex-direction: column; justify-content: center; }
+      .eyebrow { font: 600 22px/1 var(--mono); letter-spacing: 0.24em; text-transform: uppercase;
+                 color: rgba(255, 255, 255, 0.75); margin-bottom: 26px; }
+      .headline { font: 700 72px/1.04 var(--sans); color: #fff; text-transform: uppercase;
+                  letter-spacing: -0.01em; text-wrap: balance; }
+      .headline .hi { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="1"
+         data-width="1280" data-height="720">
+      <div id="frame"></div>
+      <div id="band"></div>
+      <div id="text"><div class="eyebrow"></div><div class="headline"></div></div>
+    </div>
+    <script>
+      var DATA = /*__DATA__*/ null;
+      var B = DATA.brand || {}, css = document.documentElement.style;
+      if (B.colors) { css.setProperty("--ground", B.colors.ground); css.setProperty("--accent", B.colors.accent); }
+      if (B.gradient) css.setProperty("--gradient", B.gradient);
+      if (B.fonts) {
+        css.setProperty("--sans", '"' + B.fonts.sans + '", Arial, sans-serif');
+        css.setProperty("--mono", '"' + B.fonts.mono + '", ui-monospace, monospace');
+      }
+      document.getElementById("frame").style.backgroundImage = "url(frame.jpg)";
+      document.querySelector(".eyebrow").textContent = DATA.eyebrow || "";
+      var h = document.querySelector(".headline");
+      var hi = (DATA.accent_word || "").toLowerCase();
+      (DATA.headline || "").split(/\s+/).forEach(function (w) {
+        var s = document.createElement("span");
+        s.textContent = w + " ";
+        if (hi && w.toLowerCase().replace(/[^a-z0-9$%]/g, "") === hi.replace(/[^a-z0-9$%]/g, "")) s.className = "hi";
+        h.appendChild(s);
+      });
+      var tl = gsap.timeline({ paused: true });
+      tl.set({}, {}, 1);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

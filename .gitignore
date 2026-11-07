@@ -1,0 +1,53 @@
+# Media — never commit video or audio. These files are gigabytes.
+raw/
+work/
+output/
+fixtures/
+*.mp4
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.webm
+
+# Generated images
+*.png
+*.jpg
+*.jpeg
+!brand/thumbnail-refs/*.png
+!brand/thumbnail-refs/*.jpg
+
+# Logs
+logs/
+*.log
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials.json
+client_secret*.json
+
+# Model weights and caches
+models/
+*.bin
+*.pt
+*.ckpt
+.cache/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+
+# macOS
+.DS_Store
+
+# Tooling installs
+node_modules/

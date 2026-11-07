@@ -1,0 +1,91 @@
+<!doctype html>
+<!--
+  The LinkedIn clip's graphics, 1080×1080 (square — Colin, 2026-10-20: it takes
+  more of a phone's feed than 16:9), transparent. ffmpeg puts the 16:9 footage
+  full width at y 264–872 on the brand ground (scripts/10-package.sh); this adds
+  the hook line above it and big captions below it. LinkedIn autoplays muted,
+  so captions carry it. scripts/package.py fills in DATA; colours and fonts
+  come from brand.json.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1080" />
+    <link rel="stylesheet" href="lib/fonts/fonts.css" />
+    <script src="lib/gsap.min.js"></script>
+    <style>
+      :root { --accent: #38bdf8; --gradient: linear-gradient(115deg, #1e3a8a, #38bdf8);
+              --sans: "Poppins", Arial, sans-serif; --mono: "IBM Plex Mono", ui-monospace, monospace; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1080px; height: 1080px; overflow: hidden; background: transparent; }
+      #root { position: relative; width: 1080px; height: 1080px; }
+      /* anchored to its bottom edge, so a one- or two-line hook sits just above the footage */
+      #hook { position: absolute; left: 72px; right: 72px; bottom: 852px; }
+      #hook .eyebrow { font: 600 22px/1 var(--mono); letter-spacing: 0.24em; text-transform: uppercase;
+                       color: var(--accent); margin-bottom: 16px; }
+      #hook .line { font: 700 52px/1.08 var(--sans); color: #fff; text-wrap: balance; }
+      #hook .rule { height: 6px; width: 150px; border-radius: 4px; background: var(--gradient); margin-top: 20px; }
+      /* the band under the footage; one line or two, centred in it */
+      .cap { position: absolute; left: 72px; right: 72px; top: 872px; height: 208px;
+             display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+             font: 700 60px/1.15 var(--sans); color: rgba(255, 255, 255, 0.45); opacity: 0; }
+      .cap .w { display: inline-block; margin: 0 0.12em; }
+      .cap .w.emph { color: color-mix(in srgb, var(--accent) 50%, transparent); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="10"
+         data-width="1080" data-height="1080" data-fps="30">
+      <div id="hook"><div class="eyebrow"></div><div class="line"></div><div class="rule"></div></div>
+      <div id="caps"></div>
+    </div>
+    <script>
+      var DATA = /*__DATA__*/ null;
+      var B = DATA.brand || {}, css = document.documentElement.style;
+      if (B.colors) css.setProperty("--accent", B.colors.accent);
+      if (B.gradient) css.setProperty("--gradient", B.gradient);
+      if (B.fonts) {
+        css.setProperty("--sans", '"' + B.fonts.sans + '", Arial, sans-serif');
+        css.setProperty("--mono", '"' + B.fonts.mono + '", ui-monospace, monospace');
+      }
+      var D = DATA.duration, ACCENT = (B.colors && B.colors.accent) || "#38bdf8";
+      var tl = gsap.timeline({ paused: true });
+
+      document.querySelector("#hook .eyebrow").textContent = DATA.eyebrow || "";
+      document.querySelector("#hook .line").textContent = DATA.hook || "";
+      tl.fromTo("#hook", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: "power3.out" }, 0.1);
+
+      // Short groups, big type: a phone screen, read without sound.
+      var MAX = 3, out = [], cur = [];
+      DATA.words.forEach(function (w, i) {
+        cur.push(w);
+        var n = DATA.words[i + 1];
+        if (cur.length >= MAX || !n || /[.,!?;:]$/.test(w.text) || n.start - w.end >= 0.35) { out.push(cur); cur = []; }
+      });
+      var caps = document.getElementById("caps");
+      out.forEach(function (g, gi) {
+        var el = document.createElement("div");
+        el.className = "cap";
+        g.forEach(function (w) {
+          var s = document.createElement("span");
+          s.className = "w" + (w.emph ? " emph" : "");
+          s.textContent = w.text;
+          el.appendChild(s);
+        });
+        caps.appendChild(el);
+        var start = Math.max(0, g[0].start - 0.04), nx = out[gi + 1];
+        var end = Math.min(D, nx ? Math.min(nx[0].start - 0.04, g[g.length - 1].end + 0.3) : g[g.length - 1].end + 0.3);
+        if (end <= start) end = start + 0.05;
+        tl.set(el, { opacity: 1 }, start);
+        tl.set(el, { opacity: 0 }, end);
+        var spans = el.querySelectorAll(".w");
+        g.forEach(function (w, wi) {
+          tl.to(spans[wi], { color: w.emph ? ACCENT : "#ffffff", duration: 0.08, ease: "none" }, Math.max(start, w.start - 0.04));
+        });
+      });
+      tl.set({}, {}, D);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

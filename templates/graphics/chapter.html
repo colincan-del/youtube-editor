@@ -1,0 +1,242 @@
+<!doctype html>
+<!--
+  One chapter's graphics, rendered as a transparent overlay and laid over the
+  chapter's video by ffmpeg. The video itself never passes through Chrome.
+
+  scripts/graphics.py copies this file into work/<project>/graphics/NN/ and
+  replaces the DATA line with the chapter's words, cards and callouts. Colours
+  and fonts come from the project's brands/<name>/brand.json (DATA.brand) —
+  the values in :root below are only the fallback.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="stylesheet" href="lib/fonts/fonts.css" />
+    <script src="lib/gsap.min.js"></script>
+    <style>
+      :root {
+        --ground: #111827;
+        --ground-deep: #0b1220;
+        --accent: #38bdf8;
+        --gradient: linear-gradient(115deg, #1e3a8a 0%, #2563eb 50%, #38bdf8 100%);
+        --sans: "Poppins", Arial, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, monospace;
+        --panel: color-mix(in srgb, var(--ground) 94%, transparent);
+        --pill: color-mix(in srgb, var(--ground) 90%, transparent);
+        --shadow: color-mix(in srgb, var(--ground-deep) 45%, transparent);
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: transparent;
+      }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      .layer { position: absolute; inset: 0; pointer-events: none; }
+
+      /* ---- intro title card: chapter 1 only, full frame, gradient ground */
+      #intro {
+        background: var(--gradient);
+        display: flex; flex-direction: column; justify-content: center;
+        padding: 0 200px; opacity: 0;
+      }
+      #intro::after {
+        content: ""; position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 20% 80%, color-mix(in srgb, var(--ground) 55%, transparent), transparent 60%);
+      }
+      #intro .eyebrow {
+        position: relative; z-index: 1;
+        font: 600 26px/1 var(--mono); letter-spacing: 0.28em; text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.82); margin-bottom: 36px;
+      }
+      #intro .title {
+        position: relative; z-index: 1; max-width: 1400px;
+        font: 700 104px/1.04 var(--sans); letter-spacing: -0.02em; color: #fff;
+        text-wrap: balance;
+      }
+      #intro .sub {
+        position: relative; z-index: 1; margin-top: 32px;
+        font: 400 36px/1.3 var(--sans); color: rgba(255, 255, 255, 0.85);
+      }
+
+      /* ---- chapter card: lower left, above the captions */
+      #chapter {
+        position: absolute; left: 88px; bottom: 236px;
+        display: flex; align-items: stretch; opacity: 0;
+        background: var(--panel);
+        border-radius: 14px; overflow: hidden;
+        box-shadow: 0 10px 40px var(--shadow);
+      }
+      #chapter .bar { width: 10px; background: var(--gradient); }
+      #chapter .body { padding: 22px 40px 26px 30px; }
+      #chapter .eyebrow {
+        font: 600 20px/1 var(--mono); letter-spacing: 0.24em; text-transform: uppercase;
+        color: var(--accent); margin-bottom: 12px;
+      }
+      #chapter .title { font: 700 46px/1.1 var(--sans); color: #fff; white-space: nowrap; }
+
+      /* ---- callout: a number or a term worth holding on screen */
+      .callout {
+        position: absolute; right: 88px; top: 88px; opacity: 0;
+        background: var(--panel); border-radius: 14px;
+        padding: 24px 36px 28px; min-width: 360px;
+        box-shadow: 0 10px 40px var(--shadow);
+      }
+      .callout .label {
+        font: 500 20px/1 var(--mono); letter-spacing: 0.22em; text-transform: uppercase;
+        color: var(--accent);
+      }
+      .callout .value {
+        font: 700 76px/1.05 var(--sans); color: #fff; margin-top: 12px;
+        letter-spacing: -0.01em;
+      }
+      .callout .rule { height: 6px; border-radius: 3px; background: var(--gradient); margin-top: 18px; transform-origin: left; }
+
+      /* ---- captions: ground-colour pill, white words, key words in the accent. Low,
+         narrow and centred. Off since 2026-10-19 — graphics.py sends
+         "captions": false and YouTube gets captions.srt instead (hard rule 8). */
+      #captions { opacity: 1; }
+      .cap {
+        position: absolute; left: 960px; bottom: 64px; transform: translateX(-50%);
+        max-width: 1000px; padding: 14px 40px 18px; border-radius: 18px;
+        background: var(--pill);
+        box-shadow: 0 4px 18px var(--shadow);
+        font: 700 54px/1.18 var(--sans); text-align: center; text-wrap: balance;
+        color: rgba(255, 255, 255, 0.5); opacity: 0; white-space: normal;
+        width: max-content;
+      }
+      .cap .w { display: inline-block; margin: 0 0.12em; }
+      .cap .w.emph { color: color-mix(in srgb, var(--accent) 55%, transparent); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="10"
+         data-width="1920" data-height="1080" data-fps="30">
+      <div id="captions" class="layer"></div>
+      <div id="callouts" class="layer"></div>
+      <div id="chapter-layer" class="layer">
+        <div id="chapter"><div class="bar"></div>
+          <div class="body"><div class="eyebrow"></div><div class="title"></div></div></div>
+      </div>
+      <div id="intro" class="layer">
+        <div class="eyebrow"></div><div class="title"></div><div class="sub"></div>
+      </div>
+    </div>
+
+    <script>
+      var DATA = /*__DATA__*/ null;
+
+      var B = DATA.brand || {};
+      var css = document.documentElement.style;
+      if (B.colors) {
+        css.setProperty("--ground", B.colors.ground);
+        css.setProperty("--ground-deep", B.colors.ground_deep || B.colors.ground);
+        css.setProperty("--accent", B.colors.accent);
+      }
+      if (B.gradient) css.setProperty("--gradient", B.gradient);
+      if (B.fonts) {
+        css.setProperty("--sans", '"' + B.fonts.sans + '", Arial, sans-serif');
+        css.setProperty("--mono", '"' + B.fonts.mono + '", ui-monospace, monospace');
+      }
+      var ACTIVE = "#ffffff", ACTIVE_EMPH = (B.colors && B.colors.accent) || "#38bdf8";
+      var MAX_WORDS = 4, PAUSE_BREAK = 0.35, LINGER = 0.3, LEAD = 0.04;
+      var INTRO_HOLD = 2.6, CARD_IN = 0.4, CARD_HOLD = 3.2;
+
+      var D = DATA.duration;
+      var root = document.getElementById("root");
+      root.setAttribute("data-duration", String(D));
+      var tl = gsap.timeline({ paused: true });
+
+      // -------------------------------------------------- intro card
+      var captionsFrom = 0;
+      var intro = document.getElementById("intro");
+      if (DATA.intro) {
+        intro.querySelector(".eyebrow").textContent = DATA.intro.eyebrow || "";
+        intro.querySelector(".title").textContent = DATA.intro.title || "";
+        intro.querySelector(".sub").textContent = DATA.intro.sub || "";
+        var kids = intro.querySelectorAll(".eyebrow, .title, .sub");
+        tl.set(intro, { opacity: 1 }, 0);
+        tl.fromTo(kids, { y: 40, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.7, ease: "power3.out", stagger: 0.12 }, 0.1);
+        tl.to(kids, { y: -30, opacity: 0, duration: 0.35, ease: "power2.in" }, INTRO_HOLD - 0.1);
+        tl.to(intro, { opacity: 0, duration: 0.45, ease: "power2.inOut" }, INTRO_HOLD);
+        captionsFrom = INTRO_HOLD + 0.2;
+      }
+
+      // -------------------------------------------------- chapter card
+      var card = document.getElementById("chapter");
+      if (DATA.chapter && DATA.chapter.show) {
+        var num = String(DATA.chapter.n).padStart(2, "0");
+        var tot = String(DATA.chapter.total).padStart(2, "0");
+        card.querySelector(".eyebrow").textContent = "Chapter " + num + " / " + tot;
+        card.querySelector(".title").textContent = DATA.chapter.title;
+        var t0 = DATA.intro ? INTRO_HOLD + 0.5 : CARD_IN;
+        tl.fromTo(card, { x: -60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55, ease: "power3.out" }, t0);
+        tl.to(card, { x: -40, opacity: 0, duration: 0.4, ease: "power2.in" }, Math.min(D - 0.4, t0 + CARD_HOLD));
+      }
+
+      // -------------------------------------------------- callouts
+      var cl = document.getElementById("callouts");
+      (DATA.callouts || []).forEach(function (c, i) {
+        var el = document.createElement("div");
+        el.className = "callout";
+        el.innerHTML = '<div class="label"></div><div class="value"></div><div class="rule"></div>';
+        el.querySelector(".label").textContent = c.label;
+        el.querySelector(".value").textContent = c.value;
+        cl.appendChild(el);
+        var end = Math.min(D - 0.05, c.start + c.duration);
+        tl.fromTo(el, { y: -24, opacity: 0, scale: 0.96 },
+          { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.6)" }, c.start);
+        tl.fromTo(el.querySelector(".rule"), { scaleX: 0 },
+          { scaleX: 1, duration: 0.6, ease: "power2.out" }, c.start + 0.2);
+        tl.to(el, { y: -16, opacity: 0, duration: 0.35, ease: "power2.in" }, Math.max(c.start + 0.6, end - 0.35));
+      });
+
+      // -------------------------------------------------- captions
+      function groups(words) {
+        var out = [], cur = [];
+        words.forEach(function (w, i) {
+          cur.push(w);
+          var nxt = words[i + 1];
+          var gap = nxt ? nxt.start - w.end : 99;
+          if (cur.length >= MAX_WORDS || !nxt || /[.,!?;:]$/.test(w.text) || gap >= PAUSE_BREAK) {
+            out.push(cur); cur = [];
+          }
+        });
+        return out;
+      }
+      if (DATA.captions !== false) {
+        var capLayer = document.getElementById("captions");
+        var words = (DATA.words || []).filter(function (w) { return w.end > captionsFrom && w.start < D; });
+        var G = groups(words);
+        G.forEach(function (g, gi) {
+          var el = document.createElement("div");
+          el.className = "cap";
+          g.forEach(function (w) {
+            var s = document.createElement("span");
+            s.className = "w" + (w.emph ? " emph" : "");
+            s.textContent = w.text;
+            el.appendChild(s);
+          });
+          capLayer.appendChild(el);
+          var start = Math.max(captionsFrom, g[0].start - LEAD);
+          var nxt = G[gi + 1];
+          var end = Math.min(D, nxt ? Math.min(nxt[0].start - LEAD, g[g.length - 1].end + LINGER)
+                                    : g[g.length - 1].end + LINGER);
+          if (end <= start) end = start + 0.05;
+          tl.set(el, { opacity: 1 }, start);
+          tl.set(el, { opacity: 0 }, end);
+          var spans = el.querySelectorAll(".w");
+          g.forEach(function (w, wi) {
+            var on = w.emph ? ACTIVE_EMPH : ACTIVE;
+            tl.to(spans[wi], { color: on, duration: 0.08, ease: "none" }, Math.max(start, w.start - LEAD));
+          });
+        });
+      }
+
+      tl.set({}, {}, D);   // hold the timeline open to the chapter's end
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
